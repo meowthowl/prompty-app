@@ -67,11 +67,19 @@ def _handle_prompt(settings) -> str | None:
 
 
 def _handle_lifehack(settings) -> str | None:
-    return generator.generate_post(settings, "lifehack")
+    topics = settings.raw["lifehack_topics"]
+    chosen = dedup.pick_unused("lifehack_topic", topics)
+    text = generator.generate_post(settings, "lifehack", topic=chosen)
+    dedup.mark_used("lifehack_topic", chosen)
+    return text
 
 
 def _handle_fun(settings) -> str | None:
-    return generator.generate_post(settings, "fun")
+    topics = settings.raw["fun_topics"]
+    chosen = dedup.pick_unused("fun_topic", topics)
+    text = generator.generate_post(settings, "fun", topic=chosen)
+    dedup.mark_used("fun_topic", chosen)
+    return text
 
 
 _RUBRIC_HANDLERS = {
