@@ -87,8 +87,28 @@ def _rubric_for_today(settings) -> str:
     return settings.raw["schedule"][weekday]
 
 
-def run(rubric: str | None = None, dry_run: bool = False) -> None:
+def run(
+    rubric: str | None = None,
+    dry_run: bool = False,
+    custom_text: str | None = None,
+    custom_image_prompt: str | None = None,
+) -> None:
     settings = load_settings()
+
+    if custom_text:
+        # Готовый рекламный/спонсорский пост — публикуем текст как есть,
+        # без ИИ-генерации. Картинка опциональна.
+        log.info("Ручной пост (например, реклама):\n%s", custom_text)
+        image_bytes = None
+        if custom_image_prompt and not dry_run:
+            image_bytes = images.generate_image(custom_image_prompt)
+        if dry_run:
+            log.info("Dry-run: публикация пропущена")
+            return
+        telegram_client.post_text_or_photo(settings, custom_text, image_bytes)
+        log.info("Пост опубликован")
+        return
+
     rubric = rubric or _rubric_for_today(settings)
     log.info("Рубрика: %s", rubric)
 
@@ -132,10 +152,23 @@ def main() -> None:
         action="store_true",
         help="Сгенерировать пост и вывести в лог без публикации в канал",
     )
+    parser.add_argument(
+        "--text",
+        help="Опубликовать готовый текст как есть (без ИИ) — для рекламных/спонсорских постов",
+    )
+    parser.add_argument(
+        "--image-prompt",
+        help="Промпт для обложки к --text (на английском, для Pollinations). Опционально",
+    )
     args = parser.parse_args()
 
     try:
-        run(rubric=args.rubric, dry_run=args.dry_run)
+        run(
+            rubric=args.rubric,
+            dry_run=args.dry_run,
+            custom_text=args.text,
+            custom_image_prompt=args.image_prompt,
+        )
     except Exception:
         log.exception("Ошибка при выполнении пайплайна")
         sys.exit(1)
