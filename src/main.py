@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger("tg-channel")
 
 
-def _handle_news(settings) -> tuple[str, str] | None:
+def _handle_news(settings) -> str | None:
     feeds = settings.raw["rss_feeds"]
     item = sources.pick_fresh_news(feeds, lambda key: dedup.is_used("news", key))
     if item is None:
@@ -25,13 +25,17 @@ def _handle_news(settings) -> tuple[str, str] | None:
         settings, "news", title=item.title, summary=item.summary, link=item.link
     )
     dedup.mark_used("news", item.key)
-    return text, f"illustration for tech news article: {item.title}, digital art, minimalistic"
+    return text
 
 
-def _handle_digest(settings) -> tuple[str, str] | None:
+def _handle_digest(settings) -> str | None:
     feeds = settings.raw["rss_feeds"]
     all_items = sources.fetch_news(feeds)
-    fresh = [i for i in all_items if not dedup.is_used("digest", i.key)][:5]
+    # Пропускаем и то, что уже было в дайджесте, и то, что уже вышло в
+    # ежедневной рубрике news — иначе дайджест недели будет повторяться.
+    fresh = [
+        i for i in all_items if not dedup.is_used("digest", i.key) and not dedup.is_used("news", i.key)
+    ][:5]
     if not fresh:
         log.warning("Нет свежих новостей для дайджеста — пропускаю рубрику 'digest'")
         return None
@@ -39,10 +43,10 @@ def _handle_digest(settings) -> tuple[str, str] | None:
     text = generator.generate_post(settings, "digest", items=items_text)
     for i in fresh:
         dedup.mark_used("digest", i.key)
-    return text, "weekly AI news digest illustration, digital art, minimalistic"
+    return text
 
 
-def _handle_tool(settings) -> tuple[str, str] | None:
+def _handle_tool(settings) -> str | None:
     tools = settings.raw["tools"]
     names = [t["name"] for t in tools]
     chosen_name = dedup.pick_unused("tool", names)
@@ -51,25 +55,23 @@ def _handle_tool(settings) -> tuple[str, str] | None:
         settings, "tool", name=tool["name"], url=tool["url"], note=tool["note"]
     )
     dedup.mark_used("tool", chosen_name)
-    return text, f"logo style illustration representing the AI tool {tool['name']}, flat design"
+    return text
 
 
-def _handle_prompt(settings) -> tuple[str, str] | None:
+def _handle_prompt(settings) -> str | None:
     topics = settings.raw["prompt_topics"]
     chosen = dedup.pick_unused("prompt_topic", topics)
     text = generator.generate_post(settings, "prompt", topic=chosen)
     dedup.mark_used("prompt_topic", chosen)
-    return text, f"minimalistic illustration about: {chosen}"
+    return text
 
 
-def _handle_lifehack(settings) -> tuple[str, str] | None:
-    text = generator.generate_post(settings, "lifehack")
-    return text, "person saving time using AI assistant, digital illustration, minimalistic"
+def _handle_lifehack(settings) -> str | None:
+    return generator.generate_post(settings, "lifehack")
 
 
-def _handle_fun(settings) -> tuple[str, str] | None:
-    text = generator.generate_post(settings, "fun")
-    return text, "fun quirky illustration about artificial intelligence history, flat design"
+def _handle_fun(settings) -> str | None:
+    return generator.generate_post(settings, "fun")
 
 
 _RUBRIC_HANDLERS = {
@@ -150,15 +152,20 @@ def run(
     if handler is None:
         raise ValueError(f"Неизвестная рубрика: {rubric}")
 
-    result = handler(settings)
-    if result is None:
+    text = handler(settings)
+    if text is None:
         log.info("Пост не сгенерирован (нет данных), выхожу без публикации")
         return
-
-    text, image_prompt = result
     log.info("Текст поста:\n%s", text)
 
-    image_bytes = None if dry_run else images.generate_image(settings, image_prompt)
+    # Промпт для обложки строим по содержанию именно этого поста (а не по
+    # общему шаблону рубрики) — так картинка реально соответствует тексту.
+    image_prompt = generator.generate_image_prompt(settings, text)
+    log.info("Промпт для обложки: %s", image_prompt)
+
+    image_bytes = None
+    if not dry_run and image_prompt:
+        image_bytes = images.generate_image(settings, image_prompt)
     if dry_run:
         log.info("Dry-run: публикация пропущена")
         _publish_en_copy(settings, text, image_bytes, dry_run=True)
@@ -187,7 +194,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--image-prompt",
-        help="Промпт для обложки к --text (на английском, для Pollinations). Опционально",
+        help="Промпт для обложки к --text (на английском). Опционально, требует настроенного Cloudflare",
     )
     parser.add_argument(
         "--translate-en",

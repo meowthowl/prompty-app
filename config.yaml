@@ -20,11 +20,21 @@ schedule:
   5: poll        # Вовлечение (опрос)
   6: fun         # Лёгкий контент/забавный факт
 
-# RSS-источники для рубрик news / digest (ротация, дубликаты отбрасываются)
+# RSS-источники для рубрик news / digest (ротация, дубликаты отбрасываются).
+# Чем больше источников — тем меньше риск застрять без свежих новостей при
+# ежедневной публикации рубрики news. Все проверены на валидность 12.07.2026.
 rss_feeds:
   - https://techcrunch.com/tag/artificial-intelligence/feed/
-  - https://venturebeat.com/category/ai/feed/
+  - https://feeds.feedburner.com/venturebeat/SZYF
   - https://hnrss.org/newest?q=AI+OR+LLM+OR+%22machine+learning%22
+  - https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+  - https://arstechnica.com/ai/feed/
+  - https://www.technologyreview.com/topic/artificial-intelligence/feed
+  - https://openai.com/news/rss.xml
+  - https://blog.google/technology/ai/rss/
+  - https://www.deepmind.com/blog/rss.xml
+  - https://www.wired.com/feed/tag/ai/latest/rss
+  - https://habr.com/ru/rss/hubs/artificial_intelligence/all/?fl=ru
 
 # Куратируемый список инструментов для рубрики "tool" — ротируется по кругу,
 # чтобы не зависеть от случайных источников и не советовать что попало

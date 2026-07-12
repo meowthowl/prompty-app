@@ -51,7 +51,7 @@ def load_settings() -> Settings:
         # отсутствует вовсе, поэтому обычный default-параметр не сработал бы.
         gemini_model=os.getenv("GEMINI_MODEL") or "gemini-3.1-flash-lite",
         # Генерация картинок через Cloudflare Workers AI (FLUX.1 schnell) —
-        # опционально. Без токена скрипт использует Pollinations.ai как фолбэк.
+        # опционально. Без токена пост просто выходит без картинки (текстом).
         cloudflare_account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID") or None,
         cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN") or None,
         raw=raw,

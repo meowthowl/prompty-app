@@ -59,7 +59,7 @@ src/
 ├── sources.py                # получение новостей из RSS
 ├── dedup.py                  # история опубликованного (антидубликат)
 ├── generator.py               # промпты и вызов Gemini API
-├── images.py                 # генерация обложки через Cloudflare (+ фолбэк на Pollinations)
+├── images.py                 # генерация обложки через Cloudflare Workers AI
 ├── telegram_client.py         # публикация в Telegram Bot API
 └── main.py                   # оркестрация: рубрика → генерация → публикация
 data/used_items.json        # история опубликованного (коммитится автоматически)

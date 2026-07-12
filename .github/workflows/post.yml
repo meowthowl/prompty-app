@@ -4,9 +4,10 @@ on:
   schedule:
     # 07:00 UTC = 10:00 МСК — основной пост дня (рубрика по дню недели).
     - cron: "0 7 * * *"
-    # 13:00 UTC = 16:00 МСК — дополнительный пост, рубрика "tool" (см. шаг
-    # "Determine rubric" ниже). Чтобы добавить ещё слоты — новая строка cron
-    # + новый elif в том же шаге.
+    # 13:00 UTC = 16:00 МСК — дополнительный пост, рубрика "news" каждый день
+    # (см. шаг "Generate and publish post" ниже). Итого новости выходят
+    # ежедневно + ещё раз через основную рубрику по понедельникам.
+    # Чтобы добавить ещё слоты — новая строка cron + новый elif в том же шаге.
     - cron: "0 13 * * *"
   workflow_dispatch:
     inputs:
@@ -19,7 +20,7 @@ on:
         required: false
         type: string
       image_prompt:
-        description: "Промпт для обложки к тексту выше, на английском (опционально, для Pollinations)"
+        description: "Промпт для обложки к тексту выше, на английском (опционально, требует настроенного Cloudflare)"
         required: false
         type: string
       translate_en:
@@ -73,7 +74,7 @@ jobs:
           # Для запусков по расписанию (не workflow_dispatch) сами решаем,
           # какая рубрика привязана к какому cron-слоту.
           if [ "$SCHEDULE_CRON" = "0 13 * * *" ]; then
-            INPUT_RUBRIC="tool"
+            INPUT_RUBRIC="news"
           fi
 
           ARGS=()
