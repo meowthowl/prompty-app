@@ -20,6 +20,8 @@ class Settings:
     telegram_channel_id_en: str | None
     gemini_api_key: str
     gemini_model: str
+    cloudflare_account_id: str | None
+    cloudflare_api_token: str | None
     raw: dict
 
 
@@ -44,6 +46,13 @@ def load_settings() -> Settings:
         # только на основной (русский) канал.
         telegram_channel_id_en=os.getenv("TELEGRAM_CHANNEL_ID_EN") or None,
         gemini_api_key=_require_env("GEMINI_API_KEY"),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"),
+        # os.getenv(name) or default — а не os.getenv(name, default): в GitHub
+        # Actions незаданный secret подставляется как пустая строка, а не
+        # отсутствует вовсе, поэтому обычный default-параметр не сработал бы.
+        gemini_model=os.getenv("GEMINI_MODEL") or "gemini-3.1-flash-lite",
+        # Генерация картинок через Cloudflare Workers AI (FLUX.1 schnell) —
+        # опционально. Без токена скрипт использует Pollinations.ai как фолбэк.
+        cloudflare_account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID") or None,
+        cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN") or None,
         raw=raw,
     )

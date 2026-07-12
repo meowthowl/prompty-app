@@ -36,7 +36,7 @@ flowchart LR
     A["GitHub Actions\nпо расписанию"] --> B["Выбор рубрики\nпо дню недели"]
     B --> C["RSS / инструменты\n/ темы промптов"]
     C --> D["Gemini API\nгенерация текста"]
-    D --> E["Pollinations\nгенерация обложки"]
+    D --> E["Cloudflare Workers AI\nгенерация обложки"]
     E --> F["Telegram Bot API\nпубликация в канал"]
     F --> G["data/used_items.json\nантидубликат"]
 ```
@@ -46,7 +46,7 @@ flowchart LR
 | Задача | Инструмент | Стоимость |
 |---|---|---|
 | Генерация текста | [Gemini API](https://aistudio.google.com/apikey) (`gemini-3.1-flash-lite`) | Бесплатно |
-| Генерация обложек | [Pollinations.ai](https://pollinations.ai) | Бесплатно, без ключа |
+| Генерация обложек | [Cloudflare Workers AI](https://dash.cloudflare.com) (`flux-1-schnell`) | Бесплатно, ~230 img/день |
 | Публикация | Telegram Bot API | Бесплатно |
 | Расписание/раннер | GitHub Actions | Бесплатно |
 
@@ -59,7 +59,7 @@ src/
 ├── sources.py                # получение новостей из RSS
 ├── dedup.py                  # история опубликованного (антидубликат)
 ├── generator.py               # промпты и вызов Gemini API
-├── images.py                 # генерация обложки через Pollinations
+├── images.py                 # генерация обложки через Cloudflare (+ фолбэк на Pollinations)
 ├── telegram_client.py         # публикация в Telegram Bot API
 └── main.py                   # оркестрация: рубрика → генерация → публикация
 data/used_items.json        # история опубликованного (коммитится автоматически)

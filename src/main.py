@@ -117,7 +117,7 @@ def run(
         log.info("Ручной пост (например, реклама):\n%s", custom_text)
         image_bytes = None
         if custom_image_prompt and not dry_run:
-            image_bytes = images.generate_image(custom_image_prompt)
+            image_bytes = images.generate_image(settings, custom_image_prompt)
         if dry_run:
             log.info("Dry-run: публикация пропущена")
             if translate_en:
@@ -158,7 +158,7 @@ def run(
     text, image_prompt = result
     log.info("Текст поста:\n%s", text)
 
-    image_bytes = None if dry_run else images.generate_image(image_prompt)
+    image_bytes = None if dry_run else images.generate_image(settings, image_prompt)
     if dry_run:
         log.info("Dry-run: публикация пропущена")
         _publish_en_copy(settings, text, image_bytes, dry_run=True)
