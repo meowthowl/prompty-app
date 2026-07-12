@@ -1,0 +1,45 @@
+"""Загрузка конфигурации из .env и config.yaml."""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(ROOT_DIR / ".env")
+
+
+@dataclass(frozen=True)
+class Settings:
+    telegram_bot_token: str
+    telegram_channel_id: str
+    gemini_api_key: str
+    gemini_model: str
+    raw: dict
+
+
+def _require_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"Не задана переменная окружения {name}. "
+            f"Скопируй .env.example в .env и заполни значения."
+        )
+    return value
+
+
+def load_settings() -> Settings:
+    with open(ROOT_DIR / "config.yaml", "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    return Settings(
+        telegram_bot_token=_require_env("TELEGRAM_BOT_TOKEN"),
+        telegram_channel_id=_require_env("TELEGRAM_CHANNEL_ID"),
+        gemini_api_key=_require_env("GEMINI_API_KEY"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"),
+        raw=raw,
+    )

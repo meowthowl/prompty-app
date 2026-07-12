@@ -1,0 +1,61 @@
+name: Автопостинг в Telegram-канал
+
+on:
+  schedule:
+    # 07:00 UTC = 10:00 МСК — время публикации основного поста дня.
+    # Чтобы постить чаще, добавь ещё строки cron и обрабатывай их через
+    # workflow_dispatch с явным --rubric (см. README).
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      rubric:
+        description: "Рубрика (news/tool/prompt/lifehack/digest/poll/fun). Пусто — по дню недели"
+        required: false
+        type: string
+      dry_run:
+        description: "Только сгенерировать и вывести в лог, без публикации"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and publish post
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.rubric }}" ]; then
+            ARGS+=(--rubric "${{ inputs.rubric }}")
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+          python -m src.main "${ARGS[@]}"
+
+      - name: Сохранить историю опубликованного (dedup)
+        run: |
+          git config user.name "autopost-bot"
+          git config user.email "autopost-bot@users.noreply.github.com"
+          git add data/used_items.json
+          git diff --cached --quiet || git commit -m "chore: обновить историю опубликованных постов [skip ci]"
+          git push
