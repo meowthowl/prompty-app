@@ -75,6 +75,46 @@ def generate_post(settings: Settings, rubric: str, **kwargs) -> str:
     return response.text.strip()
 
 
+def translate_post(settings: Settings, text: str) -> str:
+    """Переводит и адаптирует пост на английский — не дословно, а как
+    носитель языка написал бы такой же пост для англоязычной аудитории."""
+    client = _build_client(settings)
+    prompt = (
+        "Translate the following Telegram post into natural, engaging English "
+        "for an international audience interested in AI and technology. "
+        "Adapt idioms and tone instead of translating word-for-word, keep the "
+        "same structure and any links unchanged. Return only the translated "
+        "post, no extra commentary or quotes around it.\n\n"
+        f"{text}"
+    )
+    response = client.models.generate_content(model=settings.gemini_model, contents=prompt)
+    return response.text.strip()
+
+
+def translate_poll(settings: Settings, question: str, options: list[str]) -> tuple[str, list[str]]:
+    client = _build_client(settings)
+    prompt = (
+        "Translate this Telegram poll into natural English. Respond strictly "
+        "in this format:\n"
+        "QUESTION: <translated question>\n"
+        + "\n".join(f"OPTION: <translated option {i + 1}>" for i in range(len(options)))
+        + f"\n\nQuestion: {question}\nOptions: {', '.join(options)}"
+    )
+    response = client.models.generate_content(model=settings.gemini_model, contents=prompt)
+    en_question = question
+    en_options = list(options)
+    parsed_options: list[str] = []
+    for line in response.text.strip().splitlines():
+        line = line.strip()
+        if line.upper().startswith("QUESTION:"):
+            en_question = line.split(":", 1)[1].strip()
+        elif line.upper().startswith("OPTION:"):
+            parsed_options.append(line.split(":", 1)[1].strip())
+    if len(parsed_options) == len(options):
+        en_options = parsed_options
+    return en_question, en_options
+
+
 def generate_poll(settings: Settings) -> tuple[str, list[str]]:
     """Генерирует вопрос для опроса вовлечения + варианты ответов."""
     client = _build_client(settings)

@@ -17,6 +17,7 @@ load_dotenv(ROOT_DIR / ".env")
 class Settings:
     telegram_bot_token: str
     telegram_channel_id: str
+    telegram_channel_id_en: str | None
     gemini_api_key: str
     gemini_model: str
     raw: dict
@@ -39,6 +40,9 @@ def load_settings() -> Settings:
     return Settings(
         telegram_bot_token=_require_env("TELEGRAM_BOT_TOKEN"),
         telegram_channel_id=_require_env("TELEGRAM_CHANNEL_ID"),
+        # Английский канал опционален — если не задан, посты дублируются
+        # только на основной (русский) канал.
+        telegram_channel_id_en=os.getenv("TELEGRAM_CHANNEL_ID_EN") or None,
         gemini_api_key=_require_env("GEMINI_API_KEY"),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"),
         raw=raw,

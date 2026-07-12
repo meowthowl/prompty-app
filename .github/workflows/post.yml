@@ -22,6 +22,11 @@ on:
         description: "Промпт для обложки к тексту выше, на английском (опционально, для Pollinations)"
         required: false
         type: string
+      translate_en:
+        description: "Для text выше: перевести и опубликовать также в EN-канал"
+        required: false
+        type: boolean
+        default: false
       dry_run:
         description: "Только сгенерировать и вывести в лог, без публикации"
         required: false
@@ -50,6 +55,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TELEGRAM_CHANNEL_ID_EN: ${{ secrets.TELEGRAM_CHANNEL_ID_EN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           # Передаём инпуты через env, а не напрямую в run: — иначе текст
@@ -58,6 +64,7 @@ jobs:
           INPUT_RUBRIC: ${{ inputs.rubric }}
           INPUT_TEXT: ${{ inputs.text }}
           INPUT_IMAGE_PROMPT: ${{ inputs.image_prompt }}
+          INPUT_TRANSLATE_EN: ${{ inputs.translate_en }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           SCHEDULE_CRON: ${{ github.event.schedule }}
         run: |
@@ -76,6 +83,9 @@ jobs:
           fi
           if [ -n "$INPUT_IMAGE_PROMPT" ]; then
             ARGS+=(--image-prompt "$INPUT_IMAGE_PROMPT")
+          fi
+          if [ "$INPUT_TRANSLATE_EN" = "true" ]; then
+            ARGS+=(--translate-en)
           fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             ARGS+=(--dry-run)

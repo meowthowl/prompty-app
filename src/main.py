@@ -87,11 +87,27 @@ def _rubric_for_today(settings) -> str:
     return settings.raw["schedule"][weekday]
 
 
+def _publish_en_copy(settings, text: str, image_bytes: bytes | None, dry_run: bool) -> None:
+    """Переводит пост и публикует его в англоязычный канал, если он настроен
+    (TELEGRAM_CHANNEL_ID_EN). Картинка не регенерируется — используется та же."""
+    if not settings.telegram_channel_id_en:
+        return
+    en_text = generator.translate_post(settings, text)
+    log.info("EN-версия поста:\n%s", en_text)
+    if dry_run:
+        return
+    telegram_client.post_text_or_photo(
+        settings, en_text, image_bytes, chat_id=settings.telegram_channel_id_en
+    )
+    log.info("Пост опубликован в EN-канал")
+
+
 def run(
     rubric: str | None = None,
     dry_run: bool = False,
     custom_text: str | None = None,
     custom_image_prompt: str | None = None,
+    translate_en: bool = False,
 ) -> None:
     settings = load_settings()
 
@@ -104,9 +120,13 @@ def run(
             image_bytes = images.generate_image(custom_image_prompt)
         if dry_run:
             log.info("Dry-run: публикация пропущена")
+            if translate_en:
+                _publish_en_copy(settings, custom_text, image_bytes, dry_run=True)
             return
         telegram_client.post_text_or_photo(settings, custom_text, image_bytes)
         log.info("Пост опубликован")
+        if translate_en:
+            _publish_en_copy(settings, custom_text, image_bytes, dry_run=False)
         return
 
     rubric = rubric or _rubric_for_today(settings)
@@ -117,6 +137,13 @@ def run(
         log.info("Опрос: %s | %s", question, options)
         if not dry_run:
             telegram_client.send_poll(settings, question, options)
+        if settings.telegram_channel_id_en:
+            en_question, en_options = generator.translate_poll(settings, question, options)
+            log.info("EN-опрос: %s | %s", en_question, en_options)
+            if not dry_run:
+                telegram_client.send_poll(
+                    settings, en_question, en_options, chat_id=settings.telegram_channel_id_en
+                )
         return
 
     handler = _RUBRIC_HANDLERS.get(rubric)
@@ -134,10 +161,12 @@ def run(
     image_bytes = None if dry_run else images.generate_image(image_prompt)
     if dry_run:
         log.info("Dry-run: публикация пропущена")
+        _publish_en_copy(settings, text, image_bytes, dry_run=True)
         return
 
     telegram_client.post_text_or_photo(settings, text, image_bytes)
     log.info("Пост опубликован")
+    _publish_en_copy(settings, text, image_bytes, dry_run=False)
 
 
 def main() -> None:
@@ -160,6 +189,11 @@ def main() -> None:
         "--image-prompt",
         help="Промпт для обложки к --text (на английском, для Pollinations). Опционально",
     )
+    parser.add_argument(
+        "--translate-en",
+        action="store_true",
+        help="Для --text: перевести и опубликовать также в EN-канал (по умолчанию рекламные посты не дублируются)",
+    )
     args = parser.parse_args()
 
     try:
@@ -168,6 +202,7 @@ def main() -> None:
             dry_run=args.dry_run,
             custom_text=args.text,
             custom_image_prompt=args.image_prompt,
+            translate_en=args.translate_en,
         )
     except Exception:
         log.exception("Ошибка при выполнении пайплайна")
