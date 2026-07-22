@@ -2,11 +2,8 @@
   "tool": [
     "ChatGPT",
     "Google Gemini",
-<<<<<<< Updated upstream
-    "Perplexity"
-=======
+    "Perplexity",
     "Canva Magic Studio"
->>>>>>> Stashed changes
   ],
   "news": [
     "5545da5b5cd8fbbc8e8afc3f35a5baccf51c6592",
@@ -25,7 +22,8 @@
   ],
   "prompt_topic": [
     "разбор резюме перед отправкой в компанию мечты",
-    "подготовка к сложному разговору с начальником"
+    "подготовка к сложному разговору с начальником",
+    "рекламный текст для поста в Instagram/VK под конкретный продукт"
   ],
   "digest": [
     "5545da5b5cd8fbbc8e8afc3f35a5baccf51c6592",
