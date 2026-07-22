@@ -2,7 +2,11 @@
   "tool": [
     "ChatGPT",
     "Google Gemini",
+<<<<<<< Updated upstream
     "Perplexity"
+=======
+    "Canva Magic Studio"
+>>>>>>> Stashed changes
   ],
   "news": [
     "5545da5b5cd8fbbc8e8afc3f35a5baccf51c6592",

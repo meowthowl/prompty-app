@@ -1,18 +1,16 @@
-name: Автопостинг в Telegram-канал
+name: Автопостинг — Копейка (экономия и права потребителя)
 
 on:
   schedule:
-    # 07:07 UTC ≈ 10:07 МСК — основной пост дня (рубрика по дню недели).
-    # Смещено на 7 минут от круглого часа: GitHub Actions официально
-    # предупреждает, что расписания ровно на ":00" чаще задерживаются или
-    # пропускаются из-за пиковой нагрузки (все чужие cron срабатывают в тот
-    # же момент). Смещение — рекомендованный способ снизить эту задержку.
-    - cron: "7 7 * * *"
-    # 13:07 UTC ≈ 16:07 МСК — дополнительный пост, рубрика "news" каждый день
-    # (см. шаг "Generate and publish post" ниже). Итого новости выходят
-    # ежедневно + ещё раз через основную рубрику по понедельникам.
-    # Чтобы добавить ещё слоты — новая строка cron + новый elif в том же шаге.
-    - cron: "7 13 * * *"
+    # 05:22 UTC ≈ 08:22 МСК — основной пост дня, попадает в утренний пик
+    # просмотров в Telegram (07:00-09:00 МСК, по данным Palladium SMM 2026:
+    # посты в пиковые часы получают на 30-50% больше просмотров). Время
+    # сдвинуто от круглого часа и разнесено с расписанием Prompty на
+    # 15 минут, чтобы оба канала не стартовали в одну и ту же минуту.
+    - cron: "22 5 * * *"
+    # 16:22 UTC ≈ 19:22 МСК — дополнительный пост, рубрика "news" каждый
+    # день, попадает в вечерний пик (18:00-22:00 МСК).
+    - cron: "22 16 * * *"
   workflow_dispatch:
     inputs:
       rubric:
@@ -59,8 +57,7 @@ jobs:
       - name: Generate and publish post
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          TELEGRAM_CHANNEL_ID_EN: ${{ secrets.TELEGRAM_CHANNEL_ID_EN }}
+          TELEGRAM_CHANNEL_ID_SAVINGS: ${{ secrets.TELEGRAM_CHANNEL_ID_SAVINGS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -71,17 +68,16 @@ jobs:
           INPUT_RUBRIC: ${{ inputs.rubric }}
           INPUT_TEXT: ${{ inputs.text }}
           INPUT_IMAGE_PROMPT: ${{ inputs.image_prompt }}
-          INPUT_TRANSLATE_EN: ${{ inputs.translate_en }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           SCHEDULE_CRON: ${{ github.event.schedule }}
         run: |
           # Для запусков по расписанию (не workflow_dispatch) сами решаем,
           # какая рубрика привязана к какому cron-слоту.
-          if [ "$SCHEDULE_CRON" = "7 13 * * *" ]; then
+          if [ "$SCHEDULE_CRON" = "22 16 * * *" ]; then
             INPUT_RUBRIC="news"
           fi
 
-          ARGS=()
+          ARGS=(--profile savings)
           if [ -n "$INPUT_RUBRIC" ]; then
             ARGS+=(--rubric "$INPUT_RUBRIC")
           fi
@@ -90,9 +86,6 @@ jobs:
           fi
           if [ -n "$INPUT_IMAGE_PROMPT" ]; then
             ARGS+=(--image-prompt "$INPUT_IMAGE_PROMPT")
-          fi
-          if [ "$INPUT_TRANSLATE_EN" = "true" ]; then
-            ARGS+=(--translate-en)
           fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             ARGS+=(--dry-run)
@@ -103,6 +96,6 @@ jobs:
         run: |
           git config user.name "autopost-bot"
           git config user.email "autopost-bot@users.noreply.github.com"
-          git add data/used_items.json
-          git diff --cached --quiet || git commit -m "chore: обновить историю опубликованных постов [skip ci]"
+          git add data/used_items_savings.json
+          git diff --cached --quiet || git commit -m "chore: обновить историю опубликованных постов (savings) [skip ci]"
           git push

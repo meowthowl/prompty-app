@@ -1,0 +1,99 @@
+name: Автопостинг — Prompty (ИИ для маркетинга и бизнеса)
+
+on:
+  schedule:
+    # 05:07 UTC ≈ 08:07 МСК — основной пост дня, попадает в утренний пик
+    # просмотров в Telegram (07:00-09:00 МСК, по данным Palladium SMM 2026:
+    # посты в пиковые часы получают на 30-50% больше просмотров). Смещено
+    # на 7 минут от круглого часа: GitHub Actions официально предупреждает,
+    # что расписания ровно на ":00" чаще задерживаются из-за пиковой нагрузки
+    # у всех пользователей одновременно.
+    - cron: "7 5 * * *"
+    # 16:07 UTC ≈ 19:07 МСК — дополнительный пост, рубрика "news" каждый
+    # день, попадает в вечерний пик (18:00-22:00 МСК). Итого новости выходят
+    # ежедневно + ещё раз через основную рубрику по понедельникам.
+    # Чтобы добавить ещё слоты — новая строка cron + новый elif в том же шаге.
+    - cron: "7 16 * * *"
+  workflow_dispatch:
+    inputs:
+      rubric:
+        description: "Рубрика (news/tool/prompt/lifehack/digest/poll/fun). Пусто — по дню недели"
+        required: false
+        type: string
+      text:
+        description: "Готовый текст рекламного/спонсорского поста (публикуется как есть, без ИИ). Если заполнено — рубрика игнорируется"
+        required: false
+        type: string
+      image_prompt:
+        description: "Промпт для обложки к тексту выше, на английском (опционально, требует настроенного Cloudflare)"
+        required: false
+        type: string
+      dry_run:
+        description: "Только сгенерировать и вывести в лог, без публикации"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and publish post
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Передаём инпуты через env, а не напрямую в run: — иначе текст
+          # рекламного поста со спецсимволами/кавычками может сломать скрипт
+          # или выполнить произвольные команды (script injection).
+          INPUT_RUBRIC: ${{ inputs.rubric }}
+          INPUT_TEXT: ${{ inputs.text }}
+          INPUT_IMAGE_PROMPT: ${{ inputs.image_prompt }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          SCHEDULE_CRON: ${{ github.event.schedule }}
+        run: |
+          # Для запусков по расписанию (не workflow_dispatch) сами решаем,
+          # какая рубрика привязана к какому cron-слоту.
+          if [ "$SCHEDULE_CRON" = "7 16 * * *" ]; then
+            INPUT_RUBRIC="news"
+          fi
+
+          ARGS=(--profile prompty)
+          if [ -n "$INPUT_RUBRIC" ]; then
+            ARGS+=(--rubric "$INPUT_RUBRIC")
+          fi
+          if [ -n "$INPUT_TEXT" ]; then
+            ARGS+=(--text "$INPUT_TEXT")
+          fi
+          if [ -n "$INPUT_IMAGE_PROMPT" ]; then
+            ARGS+=(--image-prompt "$INPUT_IMAGE_PROMPT")
+          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+          python -m src.main "${ARGS[@]}"
+
+      - name: Сохранить историю опубликованного (dedup)
+        run: |
+          git config user.name "autopost-bot"
+          git config user.email "autopost-bot@users.noreply.github.com"
+          git add data/used_items.json
+          git diff --cached --quiet || git commit -m "chore: обновить историю опубликованных постов (prompty) [skip ci]"
+          git push

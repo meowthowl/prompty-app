@@ -1,6 +1,9 @@
 """Минимальный клиент Telegram Bot API — без тяжёлых зависимостей,
-только прямые HTTP-запросы (requests)."""
+только прямые HTTP-запросы (requests). Публикует в канал текущего профиля
+(settings.telegram_channel_id)."""
 from __future__ import annotations
+
+import json
 
 import requests
 
@@ -18,50 +21,46 @@ def _call(settings: Settings, method: str, data: dict | None = None, files: dict
     return payload["result"]
 
 
-def send_message(settings: Settings, text: str, chat_id: str | None = None) -> dict:
+def send_message(settings: Settings, text: str) -> dict:
     return _call(
         settings,
         "sendMessage",
         data={
-            "chat_id": chat_id or settings.telegram_channel_id,
+            "chat_id": settings.telegram_channel_id,
             "text": text,
             "disable_web_page_preview": True,
         },
     )
 
 
-def send_photo(settings: Settings, image_bytes: bytes, caption: str, chat_id: str | None = None) -> dict:
+def send_photo(settings: Settings, image_bytes: bytes, caption: str) -> dict:
     return _call(
         settings,
         "sendPhoto",
         data={
-            "chat_id": chat_id or settings.telegram_channel_id,
+            "chat_id": settings.telegram_channel_id,
             "caption": caption,
         },
         files={"photo": ("cover.jpg", image_bytes)},
     )
 
 
-def send_poll(settings: Settings, question: str, options: list[str], chat_id: str | None = None) -> dict:
-    import json as _json
-
+def send_poll(settings: Settings, question: str, options: list[str]) -> dict:
     return _call(
         settings,
         "sendPoll",
         data={
-            "chat_id": chat_id or settings.telegram_channel_id,
+            "chat_id": settings.telegram_channel_id,
             "question": question,
-            "options": _json.dumps(options, ensure_ascii=False),
+            "options": json.dumps(options, ensure_ascii=False),
             "is_anonymous": True,
         },
     )
 
 
-def post_text_or_photo(
-    settings: Settings, text: str, image_bytes: bytes | None, chat_id: str | None = None
-) -> dict:
+def post_text_or_photo(settings: Settings, text: str, image_bytes: bytes | None) -> dict:
     """Публикует пост: с картинкой, если она есть и подпись укладывается
     в лимит caption (1024 символа), иначе как обычный текст."""
     if image_bytes and len(text) <= 1024:
-        return send_photo(settings, image_bytes, text, chat_id=chat_id)
-    return send_message(settings, text, chat_id=chat_id)
+        return send_photo(settings, image_bytes, text)
+    return send_message(settings, text)
